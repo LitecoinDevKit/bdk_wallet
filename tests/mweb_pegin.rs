@@ -11,6 +11,8 @@ use bdk_wallet::chain::{is_mweb_bridge_output, mweb_pegin_script_pubkey};
 use bdk_wallet::test_utils::get_funded_wallet_wpkh;
 
 #[test]
+// MWEB signing still goes through Wallet::sign, which understands the PSBT MWEB maps.
+#[allow(deprecated)]
 fn bdk_assembles_pegin_from_finalizer_body_and_core_recognizes() {
     let Some(env) = try_node_from_env().expect("node harness") else {
         return;

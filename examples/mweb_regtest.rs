@@ -34,6 +34,8 @@ const SEED_HEX: &str = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b
 const MWEB_MAGIC: &[u8] = b"bdk_mweb_v2";
 const FUND_CONFIRM_HEIGHT: u32 = 431;
 
+// MWEB signing still goes through Wallet::sign, which understands the PSBT MWEB maps.
+#[allow(deprecated)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Some(env) = try_node_from_env().expect("node harness") else {
         eprintln!("skip: set LITECOIND_EXE to run this example");

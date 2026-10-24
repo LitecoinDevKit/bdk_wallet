@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Litecoin fork: 3.2.0-litecoin.0
+
+- Merged upstream `bitcoindevkit/bdk_wallet` master at `7f1ec9f9` (the 3.2.0 line).
+  Upstream base before this merge was `fc88144f` (#518).
+- From upstream #505: signing moves to caller-owned keys (`bitcoin::Psbt::sign` with the
+  caller's `KeyMap`/`Xpriv` and `wallet.secp_ctx()`, or `Wallet::sign_with_signers` with a
+  caller-owned `SignersContainer`), `TxBuilder::set_condition` is added, and the wallet-owned
+  signer and policy APIs are deprecated: `Wallet::{sign, policies, get_signers, add_signer,
+  keymap, policy_path}`, `CreateParams`/`LoadParams::{set_keymap, set_keymaps,
+  extract_keys}`, `TxBuilder::policy_path`.
+- The MWEB facade (`prepare_mweb_pegin`, `fund_mweb_send`, `fund_mweb_pegout`) still signs
+  through `Wallet::sign`, which understands the fork's PSBT MWEB maps; its examples and tests
+  carry `#[allow(deprecated)]`. Migrating MWEB signing to caller-owned keys is deferred.
+- Upstream's new tests are ported to the fork's types (`Network::Testnet4`,
+  `litecoin::Transaction { mw_tx, is_hog_ex, .. }`, `CanonicalTx::tx`).
+
 ### Added
 
 - feat(wallet): add unstable `Wallet::create_psbt` and `Wallet::replace_by_fee` behind the

@@ -112,7 +112,6 @@ let change_descriptor = "wpkh(tprv8ZgxMBicQKsPdcAqYBpzAFwU5yxBUo88ggoBqu1qPcHUfS
 let mut wallet = match Wallet::load()
     .descriptor(KeychainKind::External, Some(descriptor))
     .descriptor(KeychainKind::Internal, Some(change_descriptor))
-    .extract_keys()
     .check_network(network)
     .load_wallet(&mut conn)?
 {
@@ -131,6 +130,10 @@ wallet.persist(&mut conn)?;
 println!("Next receive address: {}", address_info.address);
 Ok::<_, anyhow::Error>(())
 ```
+
+## Security Policy
+
+To report a security issue, please refer to the [security policy](SECURITY.md).
 
 ## Minimum Supported Rust Version (MSRV)
 
