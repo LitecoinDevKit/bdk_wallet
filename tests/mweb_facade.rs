@@ -91,6 +91,8 @@ fn prepare_mweb_pegin_builds_psbt_and_body() {
 }
 
 #[test]
+// MWEB signing still goes through Wallet::sign, which understands the PSBT MWEB maps.
+#[allow(deprecated)]
 fn wallet_facade_pegin_pegout_roundtrip() {
     let Some(env) = try_node_from_env().expect("node harness") else {
         return;

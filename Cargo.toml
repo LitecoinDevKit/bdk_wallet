@@ -4,7 +4,7 @@
 [package]
 name = "bdk_wallet"
 homepage = "https://bitcoindevkit.org"
-version = "3.1.0-litecoin.0"
+version = "3.2.0-litecoin.0"
 repository = "https://github.com/LitecoinDevKit/bdk_wallet"
 documentation = "https://docs.rs/bdk_wallet"
 description = "A modern, lightweight, descriptor-based wallet library for Litecoin"

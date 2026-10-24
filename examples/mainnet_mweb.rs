@@ -129,6 +129,8 @@ enum Cmd {
     Balance,
 }
 
+// MWEB signing still goes through Wallet::sign, which understands the PSBT MWEB maps.
+#[allow(deprecated)]
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     fs::create_dir_all(WALLET_DIR)?;
@@ -506,6 +508,7 @@ fn parse_ltc(s: &str) -> anyhow::Result<Amount> {
         .map_err(|e| anyhow::anyhow!("amount: {e}"))
 }
 
+#[allow(deprecated)]
 fn load_transparent_wallet() -> anyhow::Result<(PersistedWallet<Connection>, Connection)> {
     let xprv = load_master_xprv()?;
     let mut db = Connection::open(Path::new(DB_PATH))?;
