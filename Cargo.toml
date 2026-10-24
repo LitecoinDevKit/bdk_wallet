@@ -26,8 +26,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)', 'cfg(b
 # Litecoin BDK crates come from the LitecoinDevKit/bdk fork, pinned by rev for
 # reproducible standalone builds. For local development against a sibling
 # checkout, add [patch] overrides in .cargo/config.toml (see README).
-bdk_chain = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "083150b40082d9e2e3b7d6b2b76d13c37c452203", version = "0.23.2", features = ["miniscript", "serde"], default-features = false }
-bdk_mweb = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "083150b40082d9e2e3b7d6b2b76d13c37c452203", version = "0.1.0", optional = true, default-features = false, features = ["std", "zkp", "persist", "encrypt", "lip0006"] }
+bdk_chain = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "2deac37e989624e034620febb658b09811ed1d24", version = "0.23.2", features = ["miniscript", "serde"], default-features = false }
+bdk_mweb = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "2deac37e989624e034620febb658b09811ed1d24", version = "0.1.0", optional = true, default-features = false, features = ["std", "zkp", "persist", "encrypt", "lip0006"] }
 bitcoin = { package = "litecoin", version = "0.32.8-rc.2", features = ["serde", "base64"], default-features = false }
 miniscript = { git = "https://github.com/LitecoinDevKit/rust-miniscript", rev = "e3187272617adad69f5b9ece62d25ea28b70fd25", features = ["serde"], default-features = false }
 rand_core = { version = "0.6.4" }
@@ -36,7 +36,7 @@ serde = { version = "1", features = ["derive"] }
 
 # Optional dependencies
 anyhow = { version = "1", optional = true }
-bdk_file_store = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "083150b40082d9e2e3b7d6b2b76d13c37c452203", version = "0.22.0", optional = true }
+bdk_file_store = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "2deac37e989624e034620febb658b09811ed1d24", version = "0.22.0", optional = true }
 bip39 = { version = "2.2.2", optional = true }
 tempfile = { version = "3.26.0", optional = true }
 
@@ -60,9 +60,9 @@ bdk-tx = []
 [dev-dependencies]
 anyhow = "1"
 assert_matches = "1.5.0"
-bdk_electrum = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "083150b40082d9e2e3b7d6b2b76d13c37c452203", version = "0.23.2" }
-bdk_esplora = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "083150b40082d9e2e3b7d6b2b76d13c37c452203", version = "0.22.1", features = ["async-https", "blocking-https", "tokio"] }
-bdk_testenv = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "083150b40082d9e2e3b7d6b2b76d13c37c452203", features = ["litecoin-daemon"] }
+bdk_electrum = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "2deac37e989624e034620febb658b09811ed1d24", version = "0.23.2" }
+bdk_esplora = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "2deac37e989624e034620febb658b09811ed1d24", version = "0.22.1", features = ["async-https", "blocking-https", "tokio"] }
+bdk_testenv = { git = "https://github.com/LitecoinDevKit/bdk.git", rev = "2deac37e989624e034620febb658b09811ed1d24", features = ["litecoin-daemon"] }
 bdk_wallet = { path = ".", features = ["rusqlite", "file_store", "test-utils", "mweb"] }
 clap = { version = "4.5.60", features = ["derive", "env"] }
 ctrlc = "3.5.2"
