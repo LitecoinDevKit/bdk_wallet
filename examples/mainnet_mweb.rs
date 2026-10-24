@@ -129,8 +129,6 @@ enum Cmd {
     Balance,
 }
 
-// MWEB signing still goes through Wallet::sign, which understands the PSBT MWEB maps.
-#[allow(deprecated)]
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     fs::create_dir_all(WALLET_DIR)?;
@@ -174,7 +172,14 @@ fn main() -> anyhow::Result<()> {
                 Amount::from_sat(transparent_fee),
                 &secp,
             )?;
-            if !wallet.sign(&mut prepared.psbt, SignOptions::default())? {
+            // Transparent inputs are signed with the caller-held master xprv (the wallet
+            // only knows public descriptors); the MWEB side was signed in `prepare_mweb_pegin`.
+            let xprv = load_master_xprv()?;
+            prepared
+                .psbt
+                .sign(&xprv, wallet.secp_ctx())
+                .map_err(|(_, e)| anyhow::anyhow!("sign pegin PSBT: {e:?}"))?;
+            if !wallet.finalize_psbt(&mut prepared.psbt, SignOptions::default())? {
                 bail!("pegin PSBT not fully signed");
             }
             // Maps-first: MWEB already signed on PSBT; extract after transparent sign.
@@ -508,7 +513,8 @@ fn parse_ltc(s: &str) -> anyhow::Result<Amount> {
         .map_err(|e| anyhow::anyhow!("amount: {e}"))
 }
 
-#[allow(deprecated)]
+/// Load the transparent wallet with public descriptors only; signing uses the xprv from
+/// [`load_master_xprv`] at the call site.
 fn load_transparent_wallet() -> anyhow::Result<(PersistedWallet<Connection>, Connection)> {
     let xprv = load_master_xprv()?;
     let mut db = Connection::open(Path::new(DB_PATH))?;
@@ -521,7 +527,6 @@ fn load_transparent_wallet() -> anyhow::Result<(PersistedWallet<Connection>, Con
             KeychainKind::Internal,
             Some(Bip84(xprv, KeychainKind::Internal)),
         )
-        .extract_keys()
         .check_network(Network::Bitcoin)
         .load_wallet(&mut db)?
         .context("create transparent wallet first via mainnet_receive")?;
