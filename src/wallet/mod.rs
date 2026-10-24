@@ -31,6 +31,7 @@ use bdk_chain::{
         FullScanRequest, FullScanRequestBuilder, FullScanResponse, SyncRequest, SyncRequestBuilder,
         SyncResponse,
     },
+    taints_unowned,
     tx_graph::{CalculateFeeError, TxGraph, TxUpdate},
 };
 use bitcoin::{
@@ -1148,32 +1149,23 @@ impl Wallet {
 
     /// Return the balance, separated into available, trusted-pending, untrusted-pending, and
     /// immature values.
+    ///
+    /// Pending value is "trusted" when every input of the unconfirmed transaction (and of its
+    /// unconfirmed ancestors) is controlled by this wallet; see [`bdk_chain::taints_unowned`].
+    /// Any confirmation settles an output. Timelocked outputs are not classified as immature
+    /// here (`is_locked` is always `false`); only immature coinbase outputs land in
+    /// [`Balance::immature`].
     pub fn balance(&self) -> Balance {
         self.canonical_view.balance(
-            self.tx_graph.index.outpoints().iter().cloned(),
-            |_, txo| self.is_tx_trusted(txo.outpoint.txid),
-            /* min_confirmations: */ 1,
+            self.tx_graph.index.outpoints().iter().map(|(_, op)| *op),
+            taints_unowned(&self.tx_graph.index),
+            |pos| pos.is_confirmed(),
+            |_txout| false,
         )
     }
 
     // Phase 6 MWEB facade methods (`balance_combined`, `prepare_mweb_pegin`,
     // `build_mweb_send`, `build_mweb_pegout`) live in [`mweb`] when feature `mweb` is enabled.
-
-    /// Whether the transaction of `txid` is trusted by this wallet.
-    ///
-    /// A tx is considered "trusted" if all of the inputs are controlled by this wallet,
-    /// i.e. the input corresponds to an outpoint that is indexed under a tracked keychain.
-    fn is_tx_trusted(&self, txid: Txid) -> bool {
-        let Some(tx) = self.tx_graph.graph().get_tx(txid) else {
-            return false;
-        };
-        if tx.input.is_empty() {
-            return false;
-        }
-        tx.input
-            .iter()
-            .all(|txin| self.tx_graph.index.txout(txin.previous_output).is_some())
-    }
 
     /// Add an external signer
     ///
@@ -2972,7 +2964,7 @@ impl Wallet {
 #[cfg(all(bdk_wallet_unstable, feature = "bdk-tx"))]
 fn status_from_position(pos: ChainPosition<ConfirmationBlockTime>) -> Option<ConfirmationStatus> {
     if let ChainPosition::Confirmed { anchor, .. } = pos {
-        let conf_height = anchor.confirmation_height_upper_bound();
+        let conf_height = anchor.block_id.height;
         let height = absolute::Height::from_consensus(conf_height).ok()?;
         // TODO: Currently BDK has no notion of MTP, we can use the confirmation block time for now.
         let time =
