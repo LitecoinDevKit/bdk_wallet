@@ -19,9 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   signer and policy APIs are deprecated: `Wallet::{sign, policies, get_signers, add_signer,
   keymap, policy_path}`, `CreateParams`/`LoadParams::{set_keymap, set_keymaps,
   extract_keys}`, `TxBuilder::policy_path`.
-- The MWEB facade (`prepare_mweb_pegin`, `fund_mweb_send`, `fund_mweb_pegout`) still signs
-  through `Wallet::sign`, which understands the fork's PSBT MWEB maps; its examples and tests
-  carry `#[allow(deprecated)]`. Migrating MWEB signing to caller-owned keys is deferred.
+- The MWEB facade signs its MWEB components inside `prepare_mweb_pegin` /
+  `sign_and_extract_funded_mweb`; the transparent inputs of a prepared peg-in are signed by the
+  caller with `Psbt::sign(&keymap_or_xpriv, wallet.secp_ctx())` + `Wallet::finalize_psbt`. The
+  MWEB examples (`mainnet_mweb`, `mweb_regtest`) and tests (`mweb_pegin`, `mweb_facade`) follow
+  that pattern; none of them use the deprecated `Wallet::sign` or `extract_keys` any more.
 - Upstream's new tests are ported to the fork's types (`Network::Testnet4`,
   `litecoin::Transaction { mw_tx, is_hog_ex, .. }`, `CanonicalTx::tx`).
 

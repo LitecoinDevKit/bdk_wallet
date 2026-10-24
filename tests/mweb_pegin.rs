@@ -8,11 +8,11 @@ use bdk_wallet::bitcoin::Amount;
 use bdk_wallet::bitcoin::consensus::deserialize;
 use bdk_wallet::bitcoin::hex::FromHex;
 use bdk_wallet::chain::{is_mweb_bridge_output, mweb_pegin_script_pubkey};
-use bdk_wallet::test_utils::get_funded_wallet_wpkh;
+use bdk_wallet::descriptor::IntoWalletDescriptor;
+use bdk_wallet::miniscript::descriptor::KeyMapWrapper;
+use bdk_wallet::test_utils::{get_funded_wallet_wpkh, get_test_wpkh_and_change_desc};
 
 #[test]
-// MWEB signing still goes through Wallet::sign, which understands the PSBT MWEB maps.
-#[allow(deprecated)]
 fn bdk_assembles_pegin_from_finalizer_body_and_core_recognizes() {
     let Some(env) = try_node_from_env().expect("node harness") else {
         return;
@@ -49,9 +49,21 @@ fn bdk_assembles_pegin_from_finalizer_body_and_core_recognizes() {
     builder.mweb_tx(mw_tx);
     builder.fee_absolute(Amount::from_sat(500));
     let (mut psbt, mw_body) = builder.finish_mweb_pegin().expect("BDK finish peg-in");
+    // Caller-owned keys: the funded test wallet's descriptors carry the xprvs.
+    let (desc, change_desc) = get_test_wpkh_and_change_desc();
+    let (_, mut keymap) = desc
+        .into_wallet_descriptor(wallet.secp_ctx(), wallet.network().into())
+        .expect("descriptor");
+    let (_, change_keymap) = change_desc
+        .into_wallet_descriptor(wallet.secp_ctx(), wallet.network().into())
+        .expect("change descriptor");
+    keymap.extend(change_keymap);
+    let signer = KeyMapWrapper::from(keymap);
+    psbt.sign(&signer, wallet.secp_ctx())
+        .expect("sign transparent inputs");
     let signed = wallet
-        .sign(&mut psbt, SignOptions::default())
-        .expect("sign");
+        .finalize_psbt(&mut psbt, SignOptions::default())
+        .expect("finalize");
     assert!(signed, "peg-in transparent inputs must be signed");
     let mut bdk_tx = psbt.extract_tx().expect("extract");
     #[allow(deprecated)]

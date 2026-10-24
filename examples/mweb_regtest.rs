@@ -24,6 +24,8 @@ use bdk_testenv::try_node_from_env;
 use bdk_wallet::bitcoin::hex::FromHex;
 use bdk_wallet::bitcoin::key::Secp256k1;
 use bdk_wallet::bitcoin::{Amount, Network};
+use bdk_wallet::descriptor::IntoWalletDescriptor;
+use bdk_wallet::miniscript::descriptor::KeyMapWrapper;
 use bdk_wallet::test_utils::get_test_wpkh_and_change_desc;
 use bdk_wallet::{
     KeychainKind, MwebScanContext, MwebSpendParams, MwebStore, SignOptions, Wallet,
@@ -34,8 +36,6 @@ const SEED_HEX: &str = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b
 const MWEB_MAGIC: &[u8] = b"bdk_mweb_v2";
 const FUND_CONFIRM_HEIGHT: u32 = 431;
 
-// MWEB signing still goes through Wallet::sign, which understands the PSBT MWEB maps.
-#[allow(deprecated)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let Some(env) = try_node_from_env().expect("node harness") else {
         eprintln!("skip: set LITECOIND_EXE to run this example");
@@ -52,7 +52,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     let book = AddressBook::from_keys(&keys, DEFAULT_GAP_LIMIT, &secp)?;
 
+    // Transparent keys stay with the caller: the wallet only holds public descriptors and the
+    // PSBT is signed with `Psbt::sign` + `Wallet::finalize_psbt`.
     let (desc, change_desc) = get_test_wpkh_and_change_desc();
+    let (_, mut keymap) = desc.into_wallet_descriptor(&secp, Network::Regtest.into())?;
+    let (_, change_keymap) = change_desc.into_wallet_descriptor(&secp, Network::Regtest.into())?;
+    keymap.extend(change_keymap);
+    let signer = KeyMapWrapper::from(keymap);
     let mut wallet = Wallet::create(desc.to_string(), change_desc.to_string())
         .network(Network::Regtest)
         .create_wallet_no_persist()?;
@@ -86,7 +92,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let transparent_fee = Amount::from_sat(1_000);
     let mut prepared =
         wallet.prepare_mweb_pegin(&keys, 2, pegin_amount, mweb_fee, transparent_fee, &secp)?;
-    assert!(wallet.sign(&mut prepared.psbt, SignOptions::default())?);
+    prepared
+        .psbt
+        .sign(&signer, wallet.secp_ctx())
+        .map_err(|(_, e)| format!("sign: {e:?}"))?;
+    assert!(wallet.finalize_psbt(&mut prepared.psbt, SignOptions::default())?);
     let tx = extract_prepared_mweb_pegin(&prepared.psbt)?;
     env.rpc.send_raw_transaction(&tx)?;
     env.mine_mweb_activation(&mining)?;

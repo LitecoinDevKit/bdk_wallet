@@ -9,6 +9,8 @@ use bdk_testenv::{MWEB_PEGIN_MATURITY, try_node_from_env};
 use bdk_wallet::bitcoin::hex::FromHex;
 use bdk_wallet::bitcoin::key::Secp256k1;
 use bdk_wallet::bitcoin::{Amount, Network};
+use bdk_wallet::descriptor::IntoWalletDescriptor;
+use bdk_wallet::miniscript::descriptor::KeyMapWrapper;
 use bdk_wallet::test_utils::{get_funded_wallet_wpkh, get_test_wpkh_and_change_desc};
 use bdk_wallet::{KeychainKind, MwebSpendParams, SignOptions, Wallet, extract_prepared_mweb_pegin};
 
@@ -91,8 +93,6 @@ fn prepare_mweb_pegin_builds_psbt_and_body() {
 }
 
 #[test]
-// MWEB signing still goes through Wallet::sign, which understands the PSBT MWEB maps.
-#[allow(deprecated)]
 fn wallet_facade_pegin_pegout_roundtrip() {
     let Some(env) = try_node_from_env().expect("node harness") else {
         return;
@@ -109,7 +109,16 @@ fn wallet_facade_pegin_pegout_roundtrip() {
     .unwrap();
     let book = AddressBook::from_keys(&keys, DEFAULT_GAP_LIMIT, &secp).unwrap();
 
+    // Transparent keys stay with the test; the wallet signs nothing itself.
     let (desc, change_desc) = get_test_wpkh_and_change_desc();
+    let (_, mut keymap) = desc
+        .into_wallet_descriptor(&secp, Network::Regtest.into())
+        .expect("descriptor");
+    let (_, change_keymap) = change_desc
+        .into_wallet_descriptor(&secp, Network::Regtest.into())
+        .expect("change descriptor");
+    keymap.extend(change_keymap);
+    let signer = KeyMapWrapper::from(keymap);
     let mut wallet = Wallet::create(desc.to_string(), change_desc.to_string())
         .network(Network::Regtest)
         .create_wallet_no_persist()
@@ -154,10 +163,14 @@ fn wallet_facade_pegin_pegout_roundtrip() {
     let mut prepared = wallet
         .prepare_mweb_pegin(&keys, 2, pegin_amount, mweb_fee, transparent_fee, &secp)
         .expect("prepare_mweb_pegin");
-    let signed = wallet
-        .sign(&mut prepared.psbt, SignOptions::default())
-        .expect("sign");
-    assert!(signed);
+    prepared
+        .psbt
+        .sign(&signer, wallet.secp_ctx())
+        .expect("sign transparent inputs");
+    let finalized = wallet
+        .finalize_psbt(&mut prepared.psbt, SignOptions::default())
+        .expect("finalize");
+    assert!(finalized);
     let tx = extract_prepared_mweb_pegin(&prepared.psbt).expect("mweb psbt extract");
     env.rpc.send_raw_transaction(&tx).expect("broadcast peg-in");
 

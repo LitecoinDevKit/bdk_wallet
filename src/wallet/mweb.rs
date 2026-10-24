@@ -495,7 +495,9 @@ impl Wallet {
     /// Order: `fund_mweb_pegin` → `sign_funded_mweb_pegin` (computes `kernel_id`) → transparent
     /// coin selection with v9 program → merge MWEB maps onto the PSBT.
     ///
-    /// Caller must sign the transparent inputs on `psbt`, then
+    /// Caller must sign the transparent inputs on `psbt` with their own keys
+    /// (`psbt.sign(&keymap_or_xpriv, wallet.secp_ctx())` followed by
+    /// [`Wallet::finalize_psbt`](super::Wallet::finalize_psbt)), then
     /// [`super::extract_prepared_mweb_pegin`] / [`bdk_mweb::extract_tx_with_mweb`], broadcast,
     /// then insert `outputs` into their [`MwebCoinDatabase`] after maturity.
     pub fn prepare_mweb_pegin(
