@@ -66,11 +66,7 @@ fn balance_combined_counts_immature_pegin_in_total_only() {
     let tip = wallet.latest_checkpoint().height();
     let mut db = MwebCoinDatabase::new();
     db.insert(fixture_coin(12_345).with_block_height(tip));
-    db.insert(
-        fixture_coin(7_000)
-            .with_block_height(tip)
-            .with_pegin(true),
-    );
+    db.insert(fixture_coin(7_000).with_block_height(tip).with_pegin(true));
 
     let combined = wallet.balance_combined(&db);
     assert_eq!(combined.mweb_confirmed, Amount::from_sat(12_345));
