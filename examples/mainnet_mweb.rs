@@ -475,33 +475,19 @@ fn main() -> anyhow::Result<()> {
 fn print_balances(wallet: &Wallet, store: &MwebStore) {
     let tip = wallet.latest_checkpoint().height();
     let combined = wallet.balance_combined_store(store);
-    let spendable: u64 = store
-        .db()
-        .unspent_spendable(tip, MWEB_PEGIN_MATURITY)
-        .iter()
-        .map(|c| c.amount)
-        .sum();
-    let immature: u64 = store
-        .db()
-        .unspent()
-        .filter(|c| c.is_pegin && !c.is_spendable(tip, MWEB_PEGIN_MATURITY))
-        .map(|c| c.amount)
-        .sum();
     println!(
         "transparent total={} confirmed={}",
         combined.transparent.total(),
         combined.transparent.confirmed
     );
     println!(
-        "mweb confirmed={} (1+ conf) pending={} (unconfirmed height) spendable={} (mature)",
-        combined.mweb_confirmed,
-        combined.mweb_untrusted_pending,
-        Amount::from_sat(spendable),
+        "mweb spendable={} (confirmed, mature) pending={} (unconfirmed height)",
+        combined.mweb_confirmed, combined.mweb_untrusted_pending,
     );
-    if immature > 0 {
+    if combined.mweb_immature > Amount::ZERO {
         println!(
             "mweb peg-in immature={} (need {MWEB_PEGIN_MATURITY} confs; tip={tip})",
-            Amount::from_sat(immature)
+            combined.mweb_immature
         );
     } else {
         println!("mweb tip={tip} peg-in maturity={MWEB_PEGIN_MATURITY}");

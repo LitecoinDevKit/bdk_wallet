@@ -24,23 +24,27 @@ use crate::wallet::{Balance, Wallet};
 
 /// Transparent [`Balance`] plus bucketed MWEB value from a caller-owned database.
 ///
-/// **Spendable** MWEB is a stricter subset of `mweb_confirmed`: confirmed **and**
-/// peg-in mature ([`MWEB_PEGIN_MATURITY`] blocks). Use
-/// [`MwebCoinDatabase::unspent_spendable`] for selection.
+/// `mweb_confirmed` is what MWEB coin selection can spend: confirmed **and**, for
+/// peg-ins, mature ([`MWEB_PEGIN_MATURITY`] blocks). Younger peg-ins are
+/// `mweb_immature`. Use [`MwebCoinDatabase::unspent_spendable`] for selection.
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
 pub struct CombinedBalance {
     /// Existing transparent wallet balance.
     pub transparent: Balance,
-    /// Confirmed MWEB unspent (1+ confirmation at the tip used for bucketing).
+    /// Spendable MWEB unspent: confirmed at the tip used for bucketing, and mature
+    /// if a peg-in.
     pub mweb_confirmed: Amount,
     /// Unconfirmed / unknown-height MWEB unspent.
     pub mweb_untrusted_pending: Amount,
+    /// Confirmed peg-ins younger than [`MWEB_PEGIN_MATURITY`] blocks.
+    #[serde(default)]
+    pub mweb_immature: Amount,
 }
 
 impl CombinedBalance {
-    /// Sum of confirmed + pending MWEB.
+    /// Sum of confirmed, pending and immature MWEB.
     pub fn mweb_total(&self) -> Amount {
-        self.mweb_confirmed + self.mweb_untrusted_pending
+        self.mweb_confirmed + self.mweb_untrusted_pending + self.mweb_immature
     }
 
     /// Transparent total plus all MWEB unspent.
@@ -459,6 +463,7 @@ impl Wallet {
             transparent: self.balance(),
             mweb_confirmed: Amount::from_sat(buckets.confirmed),
             mweb_untrusted_pending: Amount::from_sat(buckets.untrusted_pending),
+            mweb_immature: Amount::from_sat(buckets.immature),
         }
     }
 

@@ -57,6 +57,49 @@ fn balance_combined_sums_transparent_and_mweb() {
     );
 }
 
+/// A peg-in younger than `MWEB_PEGIN_MATURITY` is wallet value but not yet
+/// spendable: it counts in `total()` and not in `trusted_spendable()`.
+#[test]
+fn balance_combined_counts_immature_pegin_in_total_only() {
+    let (wallet, _) = get_funded_wallet_wpkh();
+    let transparent = wallet.balance();
+    let tip = wallet.latest_checkpoint().height();
+    let mut db = MwebCoinDatabase::new();
+    db.insert(fixture_coin(12_345).with_block_height(tip));
+    db.insert(
+        fixture_coin(7_000)
+            .with_block_height(tip)
+            .with_pegin(true),
+    );
+
+    let combined = wallet.balance_combined(&db);
+    assert_eq!(combined.mweb_confirmed, Amount::from_sat(12_345));
+    assert_eq!(combined.mweb_immature, Amount::from_sat(7_000));
+    assert_eq!(combined.mweb_untrusted_pending, Amount::ZERO);
+    assert_eq!(combined.mweb_total(), Amount::from_sat(19_345));
+    assert_eq!(
+        combined.total(),
+        transparent.total() + Amount::from_sat(19_345)
+    );
+    assert_eq!(
+        combined.trusted_spendable(),
+        transparent.trusted_spendable() + Amount::from_sat(12_345)
+    );
+
+    let matured = wallet.balance_combined_at(&db, tip + MWEB_PEGIN_MATURITY);
+    assert_eq!(matured.mweb_immature, Amount::ZERO);
+    assert_eq!(matured.mweb_confirmed, Amount::from_sat(19_345));
+}
+
+/// Balances serialized before `mweb_immature` existed still deserialize.
+#[test]
+fn combined_balance_deserializes_without_immature_field() {
+    let mut v = serde_json::to_value(bdk_wallet::CombinedBalance::default()).unwrap();
+    v.as_object_mut().unwrap().remove("mweb_immature");
+    let back: bdk_wallet::CombinedBalance = serde_json::from_value(v).unwrap();
+    assert_eq!(back.mweb_immature, Amount::ZERO);
+}
+
 #[test]
 fn prepare_mweb_pegin_builds_psbt_and_body() {
     let (mut wallet, _) = get_funded_wallet_wpkh();
@@ -75,7 +118,7 @@ fn prepare_mweb_pegin_builds_psbt_and_body() {
             &keys,
             2,
             Amount::from_sat(20_000),
-            Amount::from_sat(1_000),
+            Amount::from_sat(5_000),
             Amount::from_sat(500),
             &secp,
         )
